@@ -1,15 +1,4 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 get_ipython().system('pip install -U "psycopg[binary]"')
-
-
-# # Connect to PostgreSQL
-
-# In[1]:
 
 
 import psycopg, os
@@ -17,20 +6,15 @@ import psycopg, os
 print('Connecting to the PostgreSQL database...')
 conn = psycopg.connect(
     host="localhost",
-    port='5433',
+    port='5432',
     dbname="group_project",
     user="postgres",
-    password="joanne5619") 
+    password="123") 
 
 # create a cursor
 cur = conn.cursor()
 
-
-# # Build Tables
-
-# In[35]:
-
-
+#build tables
 createCmd = """
 CREATE TABLE Manager (
     ManagerNo INT PRIMARY KEY,
@@ -121,30 +105,9 @@ CREATE TABLE Financial_Analysis(
 cur.execute(createCmd)
 conn.commit()
 
-
-# In[50]:
-
-
-conn.rollback()
-
-
-# In[ ]:
-
-
-
-
-
-# # Import data into tables
-
-# In[36]:
-
-
 import pandas as pd
 from sqlalchemy import create_engine
 df = pd.read_csv("C:/Users/joann/OneDrive/桌面/Sping 2023/5310 project/projectdata(3)(1).csv")
-
-
-# In[42]:
 
 
 #load data into Manager
@@ -161,9 +124,6 @@ def load_Manager_data(data):
 load_Manager_data(df)
 
 conn.commit()
-
-
-# In[43]:
 
 
 #load data into storeinfo
@@ -183,9 +143,6 @@ load_storeinfo_data(df)
 conn.commit()
 
 
-# In[44]:
-
-
 #load data into storedetails
 def load_storedetails_data(data):
             for index, row in df.iterrows():
@@ -202,8 +159,6 @@ load_storedetails_data(df)
 
 conn.commit()
 
-
-# In[45]:
 
 
 #load data into revenue
@@ -223,9 +178,6 @@ load_revenue_data(df)
 conn.commit()
 
 
-# In[46]:
-
-
 #load data into managerdatail
 def load_Managerdetail_data(data):
         for index, row in df.iterrows():
@@ -240,9 +192,6 @@ def load_Managerdetail_data(data):
 load_Managerdetail_data(df)
 
 conn.commit()
-
-
-# In[47]:
 
 
 #load data into Service
@@ -261,10 +210,6 @@ def load_Service_data(data):
 load_Service_data(df)
 
 conn.commit()
-
-
-# In[48]:
-
 
 #load data into Cost
 def load_Cost_data(data):
@@ -285,9 +230,6 @@ load_Cost_data(df)
 conn.commit()
 
 
-# In[51]:
-
-
 #load data into Hours
 def load_Hours_data(data):
         for index, row in df.iterrows():
@@ -304,9 +246,6 @@ def load_Hours_data(data):
 load_Hours_data(df)
 
 conn.commit()
-
-
-# In[52]:
 
 
 #load data into Employees
@@ -326,9 +265,6 @@ load_Employees_data(df)
 conn.commit()
 
 
-# In[58]:
-
-
 #Load data into FinancialAnalysis
 def load_fa_data(data):
     for index, row in df.iterrows():
@@ -345,11 +281,6 @@ def load_fa_data(data):
 load_fa_data(df)
 
 conn.commit()
-
-
-# In[ ]:
-
-
 cur.close()
 conn.close()
 
