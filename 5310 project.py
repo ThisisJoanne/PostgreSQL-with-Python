@@ -96,7 +96,7 @@ CREATE TABLE Employees (
 CREATE TABLE Financial_Analysis(
 	StoreNo INT,
     GrossMargin DECIMAL(10,2),
-    Profit_after_wage DECIMAL(10,2)
+    Profit_after_wage DECIMAL(10,2),
 	PRIMARY KEY (StoreNo),
 	FOREIGN KEY (StoreNo) REFERENCES StoreInfo(StoreNo)
 );
