@@ -20,7 +20,7 @@ where service.homedel = TRUE
 group by storeinfo.state
 order by home_deliver desc
 
--- *4. How many supermarkets in each state has home delivery service?
+-- *4. Do stores open on sunday have higher gross margin than those do not open on sunday?
 select storeinfo.storeno, financial_analysis.grossmargin as Gross_margin, hours.sundays
 from storeinfo
 join financial_analysis on storeinfo.storeno = financial_analysis.storeno
@@ -40,121 +40,115 @@ order by average_gross_margin desc
 
 -- 6. Which Location(Country, Strip, Mall,etc) contribute the most sales?
 SELECT
-    R.StoreNo,
-    R.Sales_m,
     SI.Location,
-    SI.State
+    SUM(R.Sales_m) / (SELECT SUM(Sales_m) FROM Revenue) AS Proportion_of_Sales
 FROM
     Revenue R
 JOIN
     StoreInfo SI ON R.StoreNo = SI.StoreNo
+GROUP BY
+    SI.Location
 ORDER BY
-    R.Sales_m DESC
-LIMIT 5;
+    Proportion_of_Sales DESC;
 
 
 -- 7. Is advertising a crucial factor of high revenue?
 SELECT
-    R.StoreNo,
-    R.Sales_m,
-    C.Adv_1000,
-    (C.Adv_1000 / 1000) AS Adv_m, -- Convert advertising cost to millions
-    ((C.Adv_1000 / 1000) / R.Sales_m) * 100 AS Adv_Percentage_of_Sales -- Calculate the percentage
+    CASE
+        WHEN ((C.Adv_1000 / 1000) / R.Sales_m) * 100 BETWEEN 0 AND 0.5 THEN '0 - 0.5%'
+        WHEN ((C.Adv_1000 / 1000) / R.Sales_m) * 100 BETWEEN 0.5 AND 1 THEN '0.5 - 1%'
+        WHEN ((C.Adv_1000 / 1000) / R.Sales_m) * 100 BETWEEN 1 AND 1.5 THEN '1 - 1.5%'
+        WHEN ((C.Adv_1000 / 1000) / R.Sales_m) * 100 BETWEEN 1.5 AND 2 THEN '1.5 - 2%'
+        ELSE 'Other'
+    END AS Sales_Percentage_Range,
+    COUNT(*) AS Num_of_Stores
 FROM
     Revenue R
 JOIN
     Cost C ON R.StoreNo = C.StoreNo
+GROUP BY
+    CASE
+        WHEN ((C.Adv_1000 / 1000) / R.Sales_m) * 100 BETWEEN 0 AND 0.5 THEN '0 - 0.5%'
+        WHEN ((C.Adv_1000 / 1000) / R.Sales_m) * 100 BETWEEN 0.5 AND 1 THEN '0.5 - 1%'
+        WHEN ((C.Adv_1000 / 1000) / R.Sales_m) * 100 BETWEEN 1 AND 1.5 THEN '1 - 1.5%'
+        WHEN ((C.Adv_1000 / 1000) / R.Sales_m) * 100 BETWEEN 1.5 AND 2 THEN '1.5 - 2%'
+        ELSE 'Other'
+    END
 ORDER BY
-    R.Sales_m DESC;
+    Sales_Percentage_Range;
+
 	
 -- 8. Does a higher percentage of unionized employees (UnionPerc) correlate with different cost structures or sales figures?
 SELECT
-    E.StoreNo,
-    E.UnionPerc,
-    C.Wages_m,
-    R.Sales_m
-FROM
-    Employees E
-JOIN
-    Cost C ON E.StoreNo = C.StoreNo
-JOIN
-    Revenue R ON E.StoreNo = R.StoreNo
-ORDER BY
-    E.UnionPerc DESC;
-	
-
-SELECT
-    CASE 
-        WHEN UnionPerc BETWEEN 0 AND 25 THEN '0-25%'
-        WHEN UnionPerc BETWEEN 26 AND 50 THEN '26-50%'
-        WHEN UnionPerc BETWEEN 51 AND 75 THEN '51-75%'
-        WHEN UnionPerc > 75 THEN '76-100%'
-    END AS UnionPerc_Range,
-    AVG(C.Wages_m) AS Average_Wages,
-    AVG(R.Sales_m) AS Average_Sales
-FROM
-    Employees E
-JOIN
-    Cost C ON E.StoreNo = C.StoreNo
-JOIN
-    Revenue R ON E.StoreNo = R.StoreNo
+    UnionPerc_Category,
+    SUM(Sales_m) AS Total_Sales
+FROM (
+    SELECT
+        E.StoreNo,
+        E.UnionPerc,
+        C.Wages_m,
+        R.Sales_m,
+        CASE
+            WHEN E.UnionPerc >= 20 AND E.UnionPerc < 25 THEN '20-24%'
+            WHEN E.UnionPerc >= 25 AND E.UnionPerc < 30 THEN '25-29%'
+            WHEN E.UnionPerc >= 30 AND E.UnionPerc < 35 THEN '30-34%'
+            WHEN E.UnionPerc >= 35 AND E.UnionPerc < 40 THEN '35-39%'
+            WHEN E.UnionPerc >= 40 AND E.UnionPerc < 45 THEN '40-44%'
+            WHEN E.UnionPerc >= 45 AND E.UnionPerc <= 50 THEN '45-50%'
+            ELSE 'Other'
+        END AS UnionPerc_Category
+    FROM
+        Employees E
+    JOIN
+        Cost C ON E.StoreNo = C.StoreNo
+    JOIN
+        Revenue R ON E.StoreNo = R.StoreNo
+    WHERE
+        E.UnionPerc BETWEEN 20 AND 50
+) AS SalesByCategory
 GROUP BY
-    UnionPerc_Range
+    UnionPerc_Category
 ORDER BY
-    UnionPerc_Range;
+    UnionPerc_Category;
+
 
 -- 9. Is there a relationship between the number of staff and store performance metrics like sales or profit margins ?
 SELECT
-    SD.StoreNo,
-    SD.No_Staff,
-    R.Sales_m,
-    R.GrossProfit,
-    (R.GrossProfit / R.Sales_m) * 100 AS Profit_Margin_Percentage
+    CASE
+        WHEN SD.No_Staff BETWEEN 35 AND 50 THEN '35-50'
+        WHEN SD.No_Staff BETWEEN 51 AND 75 THEN '51-75'
+        WHEN SD.No_Staff BETWEEN 76 AND 100 THEN '76-100'
+        WHEN SD.No_Staff BETWEEN 101 AND 120 THEN '101-120'
+        ELSE 'Other'
+    END AS Employee_Category,
+    SUM(R.Sales_m) AS Total_Sales
 FROM
     StoreDetails SD
 JOIN
     Revenue R ON SD.StoreNo = R.StoreNo
+WHERE
+    SD.No_Staff BETWEEN 35 AND 120
+GROUP BY
+    CASE
+        WHEN SD.No_Staff BETWEEN 35 AND 50 THEN '35-50'
+        WHEN SD.No_Staff BETWEEN 51 AND 75 THEN '51-75'
+        WHEN SD.No_Staff BETWEEN 76 AND 100 THEN '76-100'
+        WHEN SD.No_Staff BETWEEN 101 AND 120 THEN '101-120'
+        ELSE 'Other'
+    END
 ORDER BY
-    SD.No_Staff;
+    Employee_Category;
+
 
 -- 10. Is there a relationship between the number of training managers receive (Mng_Train) and store performance in terms of sales or profitability?
 SELECT
-    SI.StoreNo,
-    S.CarSpaces,
-    SI.Location,
-    R.Sales_m,
-    R.GrossProfit,
-    (R.GrossProfit / R.Sales_m) * 100 AS Profit_Margin_Percentage
+    Mng_Train,
+    AVG(GrossProfit) AS Avg_Profit
 FROM
-    Service S
+    Manager_detail
 JOIN
-    StoreInfo SI ON S.StoreNo = SI.StoreNo
-JOIN
-    Revenue R ON SI.StoreNo = R.StoreNo
-WHERE
-    SI.Location = 'Country'
-ORDER BY
-    S.CarSpaces DESC, R.Sales_m DESC;
-	
-	
-SELECT
-    MD.Mng_Train,
-    AVG(R.Sales_m) AS Average_Sales,
-    AVG(R.GrossProfit) AS Average_Profit
-FROM
-    Manager_detail MD
-JOIN
-    Revenue R ON MD.StoreNo = R.StoreNo
+    Revenue ON Manager_detail.managerno = Revenue.StoreNo
 GROUP BY
-    MD.Mng_Train
+    Mng_Train
 ORDER BY
-    MD.Mng_Train;
-
-
-
-								
-
-								
-				
-										
-					
+    Avg_Profit DESC, Mng_Train ASC;
